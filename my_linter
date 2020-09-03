@@ -2,6 +2,8 @@
 
 const version = '1.0';
 
+const fetch = require('node-fetch');
+const base64 = require('js-base64').Base64;
 const { exec } = require('child_process');
 fs = require('fs');
 
@@ -27,7 +29,7 @@ function getAllLintErrors() {
                 resolve(allErrors);
             } else {
                 console.log(stderr);
-                resolve(null);
+                process.exit(84);
             }
         });
     });
@@ -170,6 +172,7 @@ function checkVersion() {
         } else {
             console.log('Not latest version of my_linter');
             console.log('actual version: ' + version, 'disponible version: ' + ghVersion);
+            process.exit(84);
         }
     });
 }

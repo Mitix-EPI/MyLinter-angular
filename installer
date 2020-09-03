@@ -7,16 +7,14 @@ else
     echo "Installing My Linter..."
 fi
 
+npm install
+
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
+    sudo cp -r node_modules /usr/local/bin/node_modules
     sudo cp my_linter /usr/local/bin/my_linter
 fi
 sudo chmod +x /usr/local/bin/my_linter
 
 echo "Install dependencies"
-
-npm install --save js-base64
-npm install --save node-fetch
-npm install --save child_process
-npm install --save fs
 
 echo "my_linter installed correctly"
