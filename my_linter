@@ -1,0 +1,175 @@
+#!/usr/bin/env node
+
+const version = '1.0';
+
+const { exec } = require('child_process');
+fs = require('fs');
+
+// Main call
+checkVersion();
+
+// Function which contains all the lint function
+async function lintAll() {
+    console.log('Script Loading ...');
+    let allErrors = await getAllLintErrors();
+    await lintLetToConst(allErrors);
+    allErrors = await getAllLintErrors();
+    await lintMissingSemicolon(allErrors);
+    console.log('Linting Finished');
+}
+
+// Exec 'ng lint' in the terminal to get all the lint errors
+function getAllLintErrors() {
+    return new Promise((resolve) => {
+        exec('ng lint', (error, stdout, stderr) => {
+            if (stdout) {
+                const allErrors = stdout.split('\n');
+                resolve(allErrors);
+            } else {
+                console.log(stderr);
+                resolve(null);
+            }
+        });
+    });
+}
+
+// -----------------------------------------All generic Functions-------------------------------------------------------- //
+
+async function lintMissingSemicolon(allErrors) {
+    let missingSemicolonErrors = allErrors.filter(line => line.includes(" Missing semicolon"));
+    for (const line of missingSemicolonErrors) {
+        await changeFileSemicolon(line);
+    }
+}
+
+async function lintLetToConst(allErrors) {
+    let letToConstErrors = allErrors.filter(line => line.includes("is never reassigned; use 'const' instead of 'let'."));
+    for (const line of letToConstErrors) {
+        await changeFileLet(line);
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------- //
+
+function changeFileLet(line) {
+    return new Promise((resolve) => {
+        let path = getPath(line);
+        fs.readFile(path, 'utf8', (err, data) => {
+            if (err) {
+                console.log('error', err);
+            }
+            let text = data.split('\n');
+            let arrayLineColumn = getLineAndColumn(line);
+            let nLine = arrayLineColumn[0] - 1;
+            let nColumn = arrayLineColumn[1] - 1;
+            text = letFunction(text, nLine, nColumn);
+            fs.writeFile(path, text, (err) => {
+                if (err) {
+                    console.log(err);
+                    resolve();
+                }
+                console.log(path + ' linted ! (l: ' + (nLine + 1).toString() + ' col: ' + (nColumn + 1).toString() + ')');
+                resolve();
+            });
+        });
+    })
+}
+
+function changeFileSemicolon(line) {
+    return new Promise((resolve) => {
+        let path = getPath(line);
+        fs.readFile(path, 'utf8', (err, data) => {
+            if (err) {
+                console.log('error', err);
+            }
+            let text = data.split('\n');
+            let arrayLineColumn = getLineAndColumn(line);
+            let nLine = arrayLineColumn[0] - 1;
+            let nColumn = arrayLineColumn[1] - 1;
+            text = semicolonFunction(text, nLine, nColumn);
+            fs.writeFile(path, text, (err) => {
+                if (err) {
+                    console.log(err);
+                    resolve();
+                }
+                console.log(path + ' linted ! (l: ' + (nLine + 1).toString() + ' col: ' + (nColumn + 1).toString() + ')');
+                resolve();
+            });
+        });
+    });
+}
+
+function getPath(line) {
+    for (let i = 6; i < line.length; i++) {
+        if (line[i] === ':') {
+            return line.substring(7, i);
+        }
+    }
+    return null;
+}
+
+function getLineAndColumn(line) {
+    let start = 0;
+    let end = 0;
+    let res = 0;
+
+    for (let i = 6; i < line.length; i++) {
+        if (line[i] === ':') {
+            start = i;
+            break;
+        }
+    }
+    for (let i = start; i < line.length; i++) {
+        if (line[i] === ' ') {
+            end = i;
+            break;
+        }
+    }
+    res = line.substring(start + 1, end).split(':');
+    return [res[0], res[1]];
+}
+
+function getExactLet(line, index) {
+    for (let i = index; i > 0 && i > 2; i--) {
+        if (line[i] === 't' && line[i - 1] === 'e' && line[i - 2] === 'l') {
+            return i - 2;
+        }
+    }
+    return 0;
+}
+
+
+function remplaceLetToConst(line, index) {
+    return line.splice(index, 3, 'const');
+}
+
+function letFunction(text, nLine, nColumn) {
+    const indexStartingLet = getExactLet(text[nLine], nColumn);
+    text[nLine] = remplaceLetToConst(text[nLine], indexStartingLet);
+    text = text.join('\n');
+    return text;
+}
+
+function semicolonFunction(text, nLine, nColumn) {
+    text[nLine] = text[nLine].splice(nColumn, 0, ';');
+    text = text.join('\n');
+    return text;
+}
+
+String.prototype.splice = function(idx, rem, str) {
+    return this.slice(0, idx) + str + this.slice(idx + Math.abs(rem));
+};
+
+function checkVersion() {
+    fetch('https://api.github.com/repos/Mitix-EPI/MyLinter-angular/contents/version')
+    .then(response => response.json())
+    .then(data => {
+        const ghVersion = base64.decode(data.content);
+        if (ghVersion === version) {
+            lintAll();
+        } else {
+            console.log('Not latest version of my_linter');
+            console.log('actual version: ' + version, 'disponible version: ' + ghVersion);
+        }
+    });
+}
