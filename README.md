@@ -13,5 +13,5 @@ npm install --save fs
 
 installation:
 ```bash
-git clone --depth=1 https://github.com/Mitix-EPI/MyLinter-angular && cd MyLinter-angular && sudo ./installer
+git clone --depth=1 https://github.com/Mitix-EPI/MyLinter-angular && cd MyLinter-angular && sudo ./installer && cd ..
 ```

@@ -12,4 +12,11 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 fi
 sudo chmod +x /usr/local/bin/my_linter
 
+echo "Install dependencies"
+
+npm install --save js-base64
+npm install --save node-fetch
+npm install --save child_process
+npm install --save fs
+
 echo "my_linter installed correctly"
