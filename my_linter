@@ -5,7 +5,13 @@ const version = '1.0';
 const fetch = require('node-fetch');
 const base64 = require('js-base64').Base64;
 const { exec } = require('child_process');
+const readline = require('readline');
 fs = require('fs');
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+})
 
 // Main call
 checkVersion();
@@ -170,9 +176,24 @@ function checkVersion() {
         if (ghVersion === version) {
             lintAll();
         } else {
-            console.log('Not latest version of my_linter');
-            console.log('actual version: ' + version, 'disponible version: ' + ghVersion);
-            process.exit(84);
+            console.log('WARNING : Not latest version of my_linter');
+            console.log('actual version: ' + version, 'disponible version: ' + ghVersion + '\n');
+            rl.question('Do you want to update my_linter ? [Y/N]', function(answer) {
+                if (answer[0] === 'n' || answer[0] === 'N') {
+                    rl.close();
+                    lintAll();
+                } else {
+                    rl.close();
+                    exec("git clone --depth=1 https://github.com/Mitix-EPI/MyLinter-angular && cd MyLinter-angular && sudo ./installer && cd .. && rm -rf MyLinter-angular", (error, stdout, stderr) => {
+                        if (stdout) {
+                            console.log('my_linter Updated ! You can use now the latest version');
+                        } else {
+                            console.log(stderr);
+                            process.exit(84);
+                        }
+                    });
+                }
+            })
         }
     });
 }
