@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const version = '1.0';
+const version = '1.1';
 
 const fetch = require('node-fetch');
 const base64 = require('js-base64').Base64;
@@ -23,7 +23,10 @@ async function lintAll() {
     await lintLetToConst(allErrors);
     allErrors = await getAllLintErrors();
     await lintMissingSemicolon(allErrors);
+    allErrors = await getAllLintErrors();
+    await lintDoubleQuoteToSingleQuote(allErrors);
     console.log('Linting Finished');
+    process.exit(0);
 }
 
 // Exec 'ng lint' in the terminal to get all the lint errors
@@ -54,6 +57,13 @@ async function lintLetToConst(allErrors) {
     let letToConstErrors = allErrors.filter(line => line.includes("is never reassigned; use 'const' instead of 'let'."));
     for (const line of letToConstErrors) {
         await changeFileLet(line);
+    }
+}
+
+async function lintDoubleQuoteToSingleQuote(allErrors) {
+    let doubleQuoteToSingleQuote = allErrors.filter(line => line.includes(`" should be '`));
+    for (const line of doubleQuoteToSingleQuote) {
+        await changeFileDoubleQuote(line);
     }
 }
 
@@ -95,6 +105,30 @@ function changeFileSemicolon(line) {
             let nLine = arrayLineColumn[0] - 1;
             let nColumn = arrayLineColumn[1] - 1;
             text = semicolonFunction(text, nLine, nColumn);
+            fs.writeFile(path, text, (err) => {
+                if (err) {
+                    console.log(err);
+                    resolve();
+                }
+                console.log(path + ' linted ! (l: ' + (nLine + 1).toString() + ' col: ' + (nColumn + 1).toString() + ')');
+                resolve();
+            });
+        });
+    });
+}
+
+function changeFileDoubleQuote(line) {
+    return new Promise((resolve) => {
+        let path = getPath(line);
+        fs.readFile(path, 'utf8', (err, data) => {
+            if (err) {
+                console.log('error', err);
+            }
+            let text = data.split('\n');
+            let arrayLineColumn = getLineAndColumn(line);
+            let nLine = arrayLineColumn[0] - 1;
+            let nColumn = arrayLineColumn[1] - 1;
+            text = doubleQuoteFunction(text, nLine, nColumn);
             fs.writeFile(path, text, (err) => {
                 if (err) {
                     console.log(err);
@@ -160,6 +194,22 @@ function letFunction(text, nLine, nColumn) {
 
 function semicolonFunction(text, nLine, nColumn) {
     text[nLine] = text[nLine].splice(nColumn, 0, ';');
+    text = text.join('\n');
+    return text;
+}
+
+function doubleQuoteFunction(text, nLine, nColumn) {
+    console.log(text[nLine]);
+    console.log(text[nLine][nColumn]);
+    text[nLine] = text[nLine].splice(nColumn, 1, `'`);
+    console.log(text[nLine]);
+    console.log(text[nLine][nColumn]);
+    for (let i = nColumn + 1; i < text[nLine].length; i++) {
+        if (text[nLine][i] === '"') {
+            text[nLine] = text[nLine].splice(i, 1, `'`);
+            break;
+        }
+    }
     text = text.join('\n');
     return text;
 }
