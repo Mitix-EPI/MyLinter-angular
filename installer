@@ -10,8 +10,8 @@ fi
 npm install
 
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
-    sudo cp -r node_modules /usr/local/bin/node_modules
-    sudo cp my_linter /usr/local/bin/my_linter
+    sudo cp -rT node_modules /usr/local/bin/node_modules
+    sudo cp -T my_linter /usr/local/bin/my_linter
 fi
 sudo chmod +x /usr/local/bin/my_linter
 

@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
-const version = '1.1';
+const version = '1.2';
 
 const fetch = require('node-fetch');
 const base64 = require('js-base64').Base64;
 const { exec } = require('child_process');
 const readline = require('readline');
+const chalk = require('chalk');
+const figlet = require('figlet');
 fs = require('fs');
 
 const rl = readline.createInterface({
@@ -14,7 +16,13 @@ const rl = readline.createInterface({
 })
 
 // Main call
-checkVersion();
+if (!process.argv[2]) {
+    checkVersion();
+} else if (process.argv[2] && (process.argv[2] === '-h' || process.argv[2] === '--help')) {
+    displayHelp();
+} else {
+    displayError();
+}
 
 // Function which contains all the lint function
 async function lintAll() {
@@ -25,6 +33,8 @@ async function lintAll() {
     await lintMissingSemicolon(allErrors);
     allErrors = await getAllLintErrors();
     await lintDoubleQuoteToSingleQuote(allErrors);
+    allErrors = await getAllLintErrors();
+    await lintEndByNewLine(allErrors);
     console.log('Linting Finished');
     process.exit(0);
 }
@@ -67,6 +77,13 @@ async function lintDoubleQuoteToSingleQuote(allErrors) {
     }
 }
 
+async function lintEndByNewLine(allErrors) {
+    let endByNewLine = allErrors.filter(line => line.includes(`file should end with a newline`));
+    for (const line of endByNewLine) {
+        await changeFileEndNewLine(line);
+    }
+}
+
 // ---------------------------------------------------------------------------------------------------------------------- //
 
 function changeFileLet(line) {
@@ -86,7 +103,7 @@ function changeFileLet(line) {
                     console.log(err);
                     resolve();
                 }
-                console.log(path + ' linted ! (l: ' + (nLine + 1).toString() + ' col: ' + (nColumn + 1).toString() + ')');
+                console.log(path + ' linted ! (l: ' + (nLine + 1).toString() + ' col: ' + (nColumn + 1).toString() + ' lint error : let to const'  +')');
                 resolve();
             });
         });
@@ -110,7 +127,7 @@ function changeFileSemicolon(line) {
                     console.log(err);
                     resolve();
                 }
-                console.log(path + ' linted ! (l: ' + (nLine + 1).toString() + ' col: ' + (nColumn + 1).toString() + ')');
+                console.log(path + ' linted ! (l: ' + (nLine + 1).toString() + ' col: ' + (nColumn + 1).toString() + ' lint error : missing semicolon'  +')');
                 resolve();
             });
         });
@@ -134,7 +151,31 @@ function changeFileDoubleQuote(line) {
                     console.log(err);
                     resolve();
                 }
-                console.log(path + ' linted ! (l: ' + (nLine + 1).toString() + ' col: ' + (nColumn + 1).toString() + ')');
+                console.log(path + ' linted ! (l: ' + (nLine + 1).toString() + ' col: ' + (nColumn + 1).toString() + ' lint error : \' instead of "'  +')');
+                resolve();
+            });
+        });
+    });
+}
+
+function changeFileEndNewLine(line) {
+    return new Promise((resolve) => {
+        let path = getPath(line);
+        fs.readFile(path, 'utf8', (err, data) => {
+            if (err) {
+                console.log('error', err);
+            }
+            let text = data.split('\n');
+            let arrayLineColumn = getLineAndColumn(line);
+            let nLine = arrayLineColumn[0] - 1;
+            let nColumn = arrayLineColumn[1] - 1;
+            text = endByNewLineFunction(text, nLine, nColumn);
+            fs.writeFile(path, text, (err) => {
+                if (err) {
+                    console.log(err);
+                    resolve();
+                }
+                console.log(path + ' linted ! (l: ' + (nLine + 1).toString() + ' col: ' + (nColumn + 1).toString() + ' lint error : file needs to end by an empty line'  +')');
                 resolve();
             });
         });
@@ -199,17 +240,19 @@ function semicolonFunction(text, nLine, nColumn) {
 }
 
 function doubleQuoteFunction(text, nLine, nColumn) {
-    console.log(text[nLine]);
-    console.log(text[nLine][nColumn]);
     text[nLine] = text[nLine].splice(nColumn, 1, `'`);
-    console.log(text[nLine]);
-    console.log(text[nLine][nColumn]);
     for (let i = nColumn + 1; i < text[nLine].length; i++) {
         if (text[nLine][i] === '"') {
             text[nLine] = text[nLine].splice(i, 1, `'`);
             break;
         }
     }
+    text = text.join('\n');
+    return text;
+}
+
+function endByNewLineFunction(text, nLine, nColumn) {
+    text[nLine + 1] = '';
     text = text.join('\n');
     return text;
 }
@@ -223,7 +266,7 @@ function checkVersion() {
     .then(response => response.json())
     .then(data => {
         const ghVersion = base64.decode(data.content);
-        if (ghVersion === version) {
+        if (ghVersion <= version) {
             lintAll();
         } else {
             console.log('WARNING : Not latest version of my_linter');
@@ -246,4 +289,29 @@ function checkVersion() {
             })
         }
     });
+}
+
+function displayHelp() {
+    console.log('\n');
+    console.log(
+        chalk.red(
+            figlet.textSync('My_Linter', { horizontalLayout: 'full' })
+        )
+    );
+    console.log('\n\nUsage:\tmy_linter\n');
+    console.log('You must be in an angular project\n');
+    console.log("my_linter is an automatic corrector of several 'ng lint's errors.");
+    console.log('This script is in beta. Updates come every week\n');
+    console.log('You can contribute to the project by adding features or corrections\n');
+    console.log('The Github Project:');
+    console.log('https://github.com/Mitix-EPI/MyLinter-angular');
+    console.log(
+        chalk.yellow('\nlocal version: ' + version.toString())
+    );
+    process.exit(0);
+}
+
+function displayError() {
+    console.log('Need help ?\nWrite my_linter --help');
+    process.exit(84);
 }
