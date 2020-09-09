@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const version = '1.3';
+const version = '1.4';
 
 const fetch = require('node-fetch');
 const base64 = require('js-base64').Base64;
@@ -54,20 +54,32 @@ if (!process.argv[2]) {
 
 // Function which contains all the lint function
 async function lintAll() {
+    // Start
     let startTime = performance.now();
     loading.startLoading('Script Starting ');
+
+    // Script
+    loadingFlag('Checking let to const errors: ', 'start');
     let allErrors = await getAllLintErrors();
     await lintLetToConst(allErrors);
+    loadingFlag('Checking missing Semicolons: ');
     allErrors = await getAllLintErrors();
     await lintMissingSemicolon(allErrors);
+    loadingFlag('Checking double quotes to single quotes errors: ');
     allErrors = await getAllLintErrors();
     await lintDoubleQuoteToSingleQuote(allErrors);
+    loadingFlag('Checking file not ending by an empty line: ');
     allErrors = await getAllLintErrors();
     await lintEndByNewLine(allErrors);
+    loadingFlag('Checking unnecessarily quoted property: ');
+    allErrors = await getAllLintErrors();
+    await lintPropertyUnnecessarilyQuoted(allErrors);
+
+    // End
     loading.stop();
     let finishTime = performance.now();
     let timeScript = Math.round((finishTime - startTime) / 1000);
-    console.log('Linting Finished');
+    console.log('\nLinting Finished');
     console.log(
         chalk.yellow('\nTime elapsed: ' + timeScript.toString() + 's')
     );
@@ -91,24 +103,7 @@ function getAllLintErrors() {
 
 // -----------------------------------------All generic Functions-------------------------------------------------------- //
 
-async function lintMissingSemicolon(allErrors) {
-    loading.stop();
-    process.stdout.write('\n');
-    loading.startLoading('Checking missing Semicolons: ');
-    let missingSemicolonErrors = allErrors.filter(line => line.includes(" Missing semicolon"));
-    if (missingSemicolonErrors.length > 0) {
-        for (const line of missingSemicolonErrors) {
-            await changeFileSemicolon(line);
-        }
-    } else {
-        loading.stop();
-        console.log('\tNo error found !');
-    }
-}
-
 async function lintLetToConst(allErrors) {
-    loading.stop();
-    loading.startLoading('Checking let to const errors: ');
     let letToConstErrors = allErrors.filter(line => line.includes("is never reassigned; use 'const' instead of 'let'."));
     if (letToConstErrors.length > 0) {
         for (const line of letToConstErrors) {
@@ -120,10 +115,19 @@ async function lintLetToConst(allErrors) {
     }
 }
 
+async function lintMissingSemicolon(allErrors) {
+    let missingSemicolonErrors = allErrors.filter(line => line.includes(" Missing semicolon"));
+    if (missingSemicolonErrors.length > 0) {
+        for (const line of missingSemicolonErrors) {
+            await changeFileSemicolon(line);
+        }
+    } else {
+        loading.stop();
+        console.log('\tNo error found !');
+    }
+}
+
 async function lintDoubleQuoteToSingleQuote(allErrors) {
-    loading.stop();
-    process.stdout.write('\n');
-    loading.startLoading('Checking double quotes to single quotes errors: ');
     let doubleQuoteToSingleQuote = allErrors.filter(line => line.includes(`" should be '`));
     if (doubleQuoteToSingleQuote.length > 0) {
         for (const line of doubleQuoteToSingleQuote) {
@@ -136,13 +140,22 @@ async function lintDoubleQuoteToSingleQuote(allErrors) {
 }
 
 async function lintEndByNewLine(allErrors) {
-    loading.stop();
-    process.stdout.write('\n');
-    loading.startLoading('Checking file not ending by an empty line: ');
     let endByNewLine = allErrors.filter(line => line.includes(`file should end with a newline`));
     if (endByNewLine.length > 0) {
         for (const line of endByNewLine) {
             await changeFileEndNewLine(line);
+        }
+    } else {
+        loading.stop();
+        console.log('\tNo error found !');
+    }
+}
+
+async function lintPropertyUnnecessarilyQuoted(allErrors) {
+    let propertyUnnecessarilyQuoted = allErrors.filter(line => line.includes(`Unnecessarily quoted property`));
+    if (propertyUnnecessarilyQuoted.length > 0) {
+        for (const line of propertyUnnecessarilyQuoted) {
+            await changeFilePropertyUnnecessarilyQuoted(line);
         }
     } else {
         loading.stop();
@@ -252,6 +265,32 @@ function changeFileEndNewLine(line) {
     });
 }
 
+function changeFilePropertyUnnecessarilyQuoted(line) {
+    return new Promise((resolve) => {
+        let path = getPath(line);
+        fs.readFile(path, 'utf8', (err, data) => {
+            if (err) {
+                console.log('error', err);
+            }
+            let text = data.split('\n');
+            let arrayLineColumn = getLineAndColumn(line);
+            let nLine = arrayLineColumn[0] - 1;
+            let nColumn = arrayLineColumn[1] - 1;
+            text = propertyUnnecessarilyQuotedFunction(text, nLine, nColumn);
+            fs.writeFile(path, text, (err) => {
+                if (err) {
+                    console.log(err);
+                    resolve();
+                }
+                loading.stop();
+                console.log(path + ' linted ! (l: ' + (nLine + 1).toString() + ' col: ' + (nColumn + 1).toString() + ')');
+                resolve();
+            });
+        });
+    });
+}
+
+
 function getPath(line) {
     for (let i = 6; i < line.length; i++) {
         if (line[i] === ':') {
@@ -327,6 +366,20 @@ function endByNewLineFunction(text, nLine, nColumn) {
     return text;
 }
 
+function propertyUnnecessarilyQuotedFunction(text, nLine, nColumn) {
+    const char = text[nLine][nColumn];
+
+    text[nLine] = text[nLine].splice(nColumn, 1, ``);
+    for (let i = nColumn + 1; i < text[nLine].length; i++) {
+        if (text[nLine][i] === char) {
+            text[nLine] = text[nLine].splice(i, 1, ``);
+            break;
+        }
+    }
+    text = text.join('\n');
+    return text;
+}
+
 String.prototype.splice = function(idx, rem, str) {
     return this.slice(0, idx) + str + this.slice(idx + Math.abs(rem));
 };
@@ -359,6 +412,14 @@ function checkVersion() {
             })
         }
     });
+}
+
+function loadingFlag(string, start) {
+    loading.stop();
+    if (!start) {
+        process.stdout.write('\n');
+    }
+    loading.startLoading(string);
 }
 
 function displayHelp() {
