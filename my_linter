@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-const version = '1.4';
+const version = '1.5';
+let angularCLIVersion = 9;
 
 const fetch = require('node-fetch');
 const base64 = require('js-base64').Base64;
@@ -91,14 +92,41 @@ function getAllLintErrors() {
     return new Promise((resolve) => {
         exec('ng lint', (error, stdout, stderr) => {
             if (stdout) {
-                const allErrors = stdout.split('\n');
-                resolve(allErrors);
+                if (angularCLIVersion <= 9) {
+                    const allErrors = stdout.split('\n');
+                    resolve(allErrors);
+                } else {
+                    const allErrors = parseAllErrors(stdout.split('\n'));
+                    resolve(allErrors);
+                }
             } else {
                 console.log(stderr);
                 process.exit(84);
             }
         });
     });
+}
+
+function parseAllErrors(allErrorsNewVersion) {
+    let res = [];
+    let home = null;
+
+    for (let line of allErrorsNewVersion) {
+        if (line[0] === '/') {
+            let i = 0;
+            for (; i < line.length; i++) {
+                if (line[i] === ':') {
+                    break;
+                }
+            }
+            home = line.substring(0, i);
+        }
+        if (line[0] === 'E' && line[1] === 'R' && line[2] === 'R' && line[3] === 'O' && line[4] === 'R' && line[5] === ':') {
+            line = line.substring(7, line.length);
+            res.push('ERROR: ' + home + ':' + line);
+        }
+    }
+    return res;
 }
 
 // -----------------------------------------All generic Functions-------------------------------------------------------- //
@@ -390,7 +418,15 @@ function checkVersion() {
     .then(data => {
         const ghVersion = base64.decode(data.content);
         if (ghVersion <= version) {
-            lintAll();
+            checkAngularCLIVersion()
+            .then(
+                () => {
+                    lintAll();
+                },
+                (error) => {
+                    console.log('Error Angular CLI version');
+                }
+            );
         } else {
             console.log('WARNING : Not latest version of my_linter');
             console.log('actual version: ' + version, 'disponible version: ' + ghVersion + '\n');
@@ -412,6 +448,43 @@ function checkVersion() {
             })
         }
     });
+}
+
+function checkAngularCLIVersion() {
+    return new Promise((resolve, rejects) => {
+        exec('ng --version', (error, stdout, stderr) => {
+            if (stdout) {
+                let tmp = stdout.split('\n');
+                let line = tmp.filter(line => line.includes("Angular CLI: "))[0];
+                angularCLIVersion = getVersionAngularCLI(line);
+            } else {
+                console.log(stderr);
+                process.exit(84);
+            }
+        });
+        resolve();
+    })
+}
+
+function getVersionAngularCLI(line) {
+    let start = 0;
+    let end = 0;
+    let res = 0;
+
+    for (let i = 0; i < line.length; i++) {
+        if (line[i] === ':') {
+            start = i + 2; // to have directly the index of the first number
+            break;
+        }
+    }
+    for (let i = start; i < line.length; i++) {
+        if (line[i] === '.') {
+            end = i;
+            break;
+        }
+    }
+    res = parseInt(line.substring(start, end), 10);
+    return res;
 }
 
 function loadingFlag(string, start) {
