@@ -13,9 +13,15 @@ cd MyLinter-angular && sudo ./installer
 
 **(Terminal): In angular project with ng lint rule**
 
+![](img/my_linter_exec_exemple.gif)
+
 ```bash
     my_linter
 ```
-
 *You must have nodeJS and npm*
+
+# Automatic Check Updates
+
+![](img/my_linter_update_exemple.gif)
+
 
