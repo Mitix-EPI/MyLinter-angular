@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const version = '1.5';
+const version = '1.6';
 let angularCLIVersion = 9;
 
 const fetch = require('node-fetch');
@@ -75,6 +75,9 @@ async function lintAll() {
     loadingFlag('Checking unnecessarily quoted property: ');
     allErrors = await getAllLintErrors();
     await lintPropertyUnnecessarilyQuoted(allErrors);
+    loadingFlag('Checking unnecessary semicolon: ');
+    allErrors = await getAllLintErrors();
+    await lintUnnecessarySemicolon(allErrors);
 
     // End
     loading.stop();
@@ -184,6 +187,18 @@ async function lintPropertyUnnecessarilyQuoted(allErrors) {
     if (propertyUnnecessarilyQuoted.length > 0) {
         for (const line of propertyUnnecessarilyQuoted) {
             await changeFilePropertyUnnecessarilyQuoted(line);
+        }
+    } else {
+        loading.stop();
+        console.log('\tNo error found !');
+    }
+}
+
+async function lintUnnecessarySemicolon(allErrors) {
+    let unnecessarySemicolon = allErrors.filter(line => line.includes(`Unnecessary semicolon`));
+    if (unnecessarySemicolon.length > 0) {
+        for (const line of unnecessarySemicolon) {
+            await changeFileUnnecessarySemicolon(line);
         }
     } else {
         loading.stop();
@@ -318,6 +333,30 @@ function changeFilePropertyUnnecessarilyQuoted(line) {
     });
 }
 
+function changeFileUnnecessarySemicolon(line) {
+    return new Promise((resolve) => {
+        let path = getPath(line);
+        fs.readFile(path, 'utf8', (err, data) => {
+            if (err) {
+                console.log('error', err);
+            }
+            let text = data.split('\n');
+            let arrayLineColumn = getLineAndColumn(line);
+            let nLine = arrayLineColumn[0] - 1;
+            let nColumn = arrayLineColumn[1] - 1;
+            text = unnecessarySemicolonFunction(text, nLine, nColumn);
+            fs.writeFile(path, text, (err) => {
+                if (err) {
+                    console.log(err);
+                    resolve();
+                }
+                loading.stop();
+                console.log(path + ' linted ! (l: ' + (nLine + 1).toString() + ' col: ' + (nColumn + 1).toString() + ')');
+                resolve();
+            });
+        });
+    });
+}
 
 function getPath(line) {
     for (let i = 6; i < line.length; i++) {
@@ -404,6 +443,12 @@ function propertyUnnecessarilyQuotedFunction(text, nLine, nColumn) {
             break;
         }
     }
+    text = text.join('\n');
+    return text;
+}
+
+function unnecessarySemicolonFunction(text, nLine, nColumn) {
+    text[nLine] = text[nLine].splice(nColumn, 1, '');
     text = text.join('\n');
     return text;
 }
