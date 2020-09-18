@@ -214,6 +214,7 @@ function changeFileLet(line) {
         fs.readFile(path, 'utf8', (err, data) => {
             if (err) {
                 console.log('error', err);
+                resolve();
             }
             let text = data.split('\n');
             let arrayLineColumn = getLineAndColumn(line);
@@ -359,20 +360,32 @@ function changeFileUnnecessarySemicolon(line) {
 }
 
 function getPath(line) {
-    for (let i = 6; i < line.length; i++) {
+    let start = 0;
+    for (; start < line.length; start++) {
+        if (line[start] === '/') {
+            break;
+        }
+    }
+    for (let i = start; i < line.length; i++) {
         if (line[i] === ':') {
-            return line.substring(7, i);
+            return line.substring(start, i);
         }
     }
     return null;
 }
 
 function getLineAndColumn(line) {
+    let startPath = 0;
     let start = 0;
     let end = 0;
     let res = 0;
 
-    for (let i = 6; i < line.length; i++) {
+    for (; startPath < line.length; startPath++) {
+        if (line[startPath] === '/') {
+            break;
+        }
+    }
+    for (let i = startPath; i < line.length; i++) {
         if (line[i] === ':') {
             start = i;
             break;
