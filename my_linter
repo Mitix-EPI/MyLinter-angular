@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const version = '1.6';
+const version = '1.7';
 let angularCLIVersion = 9;
 
 const fetch = require('node-fetch');
