@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const version = '1.7';
+const version = '1.8';
 let angularCLIVersion = 9;
 
 const fetch = require('node-fetch');
@@ -15,9 +15,9 @@ fs = require('fs');
 
 class Loading {
 
-    spinner = null;
-
-    constructor() { }
+    constructor() {
+        this.spinner = null
+    }
 
     startLoading(string, start) {
         if (this.spinner) {
@@ -210,7 +210,7 @@ async function lintUnnecessarySemicolon(allErrors) {
 
 function changeFileLet(line) {
     return new Promise((resolve) => {
-        let path = getPath(line);
+        let path = checkCorrectPath(getPath(line));
         fs.readFile(path, 'utf8', (err, data) => {
             if (err) {
                 console.log('error', err);
@@ -236,7 +236,7 @@ function changeFileLet(line) {
 
 function changeFileSemicolon(line) {
     return new Promise((resolve) => {
-        let path = getPath(line);
+        let path = checkCorrectPath(getPath(line));
         fs.readFile(path, 'utf8', (err, data) => {
             if (err) {
                 console.log('error', err);
@@ -261,7 +261,7 @@ function changeFileSemicolon(line) {
 
 function changeFileDoubleQuote(line) {
     return new Promise((resolve) => {
-        let path = getPath(line);
+        let path = checkCorrectPath(getPath(line));
         fs.readFile(path, 'utf8', (err, data) => {
             if (err) {
                 console.log('error', err);
@@ -286,7 +286,7 @@ function changeFileDoubleQuote(line) {
 
 function changeFileEndNewLine(line) {
     return new Promise((resolve) => {
-        let path = getPath(line);
+        let path = checkCorrectPath(getPath(line));
         fs.readFile(path, 'utf8', (err, data) => {
             if (err) {
                 console.log('error', err);
@@ -311,7 +311,7 @@ function changeFileEndNewLine(line) {
 
 function changeFilePropertyUnnecessarilyQuoted(line) {
     return new Promise((resolve) => {
-        let path = getPath(line);
+        let path = checkCorrectPath(getPath(line));
         fs.readFile(path, 'utf8', (err, data) => {
             if (err) {
                 console.log('error', err);
@@ -336,7 +336,7 @@ function changeFilePropertyUnnecessarilyQuoted(line) {
 
 function changeFileUnnecessarySemicolon(line) {
     return new Promise((resolve) => {
-        let path = getPath(line);
+        let path = checkCorrectPath(getPath(line));
         fs.readFile(path, 'utf8', (err, data) => {
             if (err) {
                 console.log('error', err);
@@ -374,6 +374,20 @@ function getPath(line) {
     return null;
 }
 
+function checkCorrectPath(path) {
+    let length = path.length;
+    if (path.substr(-3) === '.ts') {
+        return path;
+    } else {
+        for (let i = 0; i < length; i++) {
+            path = path.slice(0, -1);
+            if (path.substr(-3) === '.ts') {
+                return path;
+            }
+        }
+    }
+}
+
 function getLineAndColumn(line) {
     let startPath = 0;
     let start = 0;
@@ -409,7 +423,6 @@ function getExactLet(line, index) {
     }
     return 0;
 }
-
 
 function remplaceLetToConst(line, index) {
     return line.splice(index, 3, 'const');

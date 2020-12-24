@@ -1,6 +1,6 @@
 {
     "name": "my_linter",
-    "version": "1.7",
+    "version": "1.8",
     "author": "Mitix-EPI",
     "scripts": {
         "ng": "ng"
