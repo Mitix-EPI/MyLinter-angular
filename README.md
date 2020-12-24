@@ -2,7 +2,7 @@
 
 **Automatic corrector of several 'ng lint' errors' list**
 
-# Installation:
+# Installation
 
 ```bash
 git clone --depth=1 https://github.com/Mitix-EPI/MyLinter-angular &&
@@ -19,6 +19,13 @@ cd MyLinter-angular && sudo ./installer
     my_linter
 ```
 *You must have nodeJS and npm*
+*Also, have the @angular-devkit package updated (at least like in the example)*
+```json
+// package.json
+
+"devDependencies": {
+    "@angular-devkit/build-angular": "~0.1000.0"
+```
 
 # Automatic Check Updates
 
